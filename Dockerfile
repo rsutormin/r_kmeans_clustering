@@ -12,6 +12,7 @@ RUN R -q -e 'if(!require(httr)) install.packages("httr", repos="http://cran.us.r
 RUN R -q -e 'if(!require(raster)) install.packages("raster", repos="http://cran.us.r-project.org")'
 RUN apt-get -y install r-cran-evaluate r-cran-codetools r-cran-testthat
 RUN R -q -e 'if(!require(clValid)) install.packages("clValid", repos="http://cran.us.r-project.org")'
+RUN R -q -e 'if(!require(fpc)) install.packages("fpc", repos="http://cran.us.r-project.org")'
 
 # -----------------------------------------
 

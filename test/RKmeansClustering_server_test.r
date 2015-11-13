@@ -85,11 +85,18 @@ tryCatch({
     obj <- list(data=two_dim_matrix, type=unbox("log-ration"), scale=unbox("1.0"))
     ws$save_objects(list(workspace=unbox(get_ws_name()), objects=list(list(
                 type=unbox('KBaseFeatureValues.ExpressionMatrix'), name=unbox(obj_name), data=obj))))
+    input_ref <- paste(get_ws_name(),obj_name,sep="/")
+    estimate_obj_name <- "estimate.1"
+    estimate_params <- list(random_seed=unbox(123), input_matrix=unbox(input_ref),
+            out_workspace=unbox(get_ws_name()), out_estimate_result=unbox(estimate_obj_name))
+    estimate_ref <- methods$RKmeansClustering.estimate_k(estimate_params, get_context())
+    estimate_obj <- ws$get_objects(list(list(ref=estimate_ref)))[[1]][['data']]
+    expect_equal(as.numeric(estimate_obj$best_k), 3)
     clusters_obj_name <- "clisters.1"
-    params <- list(k=unbox(3), input_data=unbox(paste(get_ws_name(),obj_name,sep="/")), 
+    kmeans_params <- list(k=unbox(3), input_data=unbox(input_ref),
             out_workspace=unbox(get_ws_name()), out_clusterset_id=unbox(clusters_obj_name))
-    ref <- methods$RKmeansClustering.cluster_k_means(params, get_context())
-    clusters <- ws$get_objects(list(list(ref=ref)))[[1]][['data']][['feature_clusters']]
+    clust_ref <- methods$RKmeansClustering.cluster_k_means(kmeans_params, get_context())
+    clusters <- ws$get_objects(list(list(ref=clust_ref)))[[1]][['data']][['feature_clusters']]
     expect_equal(length(clusters), 3)
 }, finally = {
     cleanup()

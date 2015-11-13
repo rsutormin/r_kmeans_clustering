@@ -1,6 +1,6 @@
 #BEGIN_HEADER
 library(jsonlite)
-library(clValid)
+library(fpc)
 #END_HEADER
 
 methods <- list()
@@ -69,6 +69,57 @@ calc_cluster_props = function(logratios_median, cluster, ret) {
 
 methods[["RKmeansClustering.estimate_k"]] <- function(params, context) {
     #BEGIN estimate_k
+    matrix_ref <- params[['input_matrix']]
+    min_k <- params[['min_k']] 
+    max_k <- params[['max_k']]
+    crit <- params[['criterion']]
+    usepam <- params[['usepam']]
+    alpha <- params[['alpha']]
+    diss <- params[['diss']]
+    random_seed <- params[['random_seed']]
+    out_workspace <- params[['out_workspace']]
+    out_estimate_result <- params[['out_estimate_result']]
+    object_identity <- list(ref=unbox(matrix_ref))
+    ws_client <- get_ws_client(context)
+    object_data <- ws_client$get_objects(list(object_identity))[[1]]
+    expr_matrix_obj <- object_data[['data']]
+    matrix <- expr_matrix_obj[['data']]
+    if (!is.null(random_seed))
+        set.seed(random_seed)
+    if (is.null(min_k))
+        min_k <- 2
+    if (is.null(max_k))
+        max_k <- 200
+    if (is.null(crit))
+        crit <- "asw"
+    if (is.null(usepam))
+        usepam <- FALSE
+    values <- matrix[["values"]]
+    #row_names <- matrix[["row_ids"]]
+    row_names <- c(1:length(matrix[["row_ids"]]))-1
+    row.names(values) <- row_names
+    values <- data.matrix(values)
+    max_clust_num = min(c(max_k,nrow(values)-1))
+    pk<- pamk(values,krange=c(min_k:max_clust_num),criterion=crit,
+        usepam=usepam,ns=10)
+    ret_names <- c(min_k:max_clust_num)
+    best_pos <- pk$nc
+    cluster_count_qualities <- list()
+    for (pos in 1:length(ret_names)) {
+        cluster_count = unbox(ret_names[pos])
+        quality <- unbox(pk$crit[cluster_count])
+        cluster_count_qualities <- rbind(cluster_count_qualities, list(cluster_count, quality))
+    }
+    obj <- list(best_k=unbox(as.numeric(best_pos)), estimate_cluster_sizes=cluster_count_qualities)
+    prov_act <- list(service=unbox("RKmeansClustering"),method=unbox("estimate_k"),
+        service_ver=unbox("0.1"), input_ws_objects=list(unbox(matrix_ref)), 
+        description=unbox("K estimation for K-Means clustering method"), method_params=list(params))
+    prov <- list(prov_act)
+    info <- ws_client$save_objects(list(workspace=unbox(out_workspace), objects=list(list(
+        type=unbox('KBaseFeatureValues.EstimateKResult'), name=unbox(out_estimate_result),
+        data=obj, provenance=prov))))[[1]]
+    ret <- paste(info[[7]],info[[1]],info[[5]],sep="/")
+    return(unbox(ret))
     #END estimate_k
 }
 
